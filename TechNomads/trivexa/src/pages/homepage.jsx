@@ -66,7 +66,9 @@ export default function App() {
             <h2>24/7 EMERGENCY</h2>
           </button>
           <button className="icon-btn">🛒</button>
-          <button className="icon-btn">👤</button>
+          <Link to="/profile">
+            <button className="icon-btn">👤</button>
+          </Link>
         </div>
       </div>
 
@@ -119,7 +121,21 @@ export default function App() {
               <h3>Allopathy</h3>
               <img src={allopathyImg} alt="Allopathy" />
             </div>
-          </div>
+          </div><Link to="/ayurveda"className="medicine-tab">
+          <h3>Ayurveda</h3>
+          <img src={ayurImg} alt="Ayurveda" />
+        </Link>
+
+       <Link to="/homeopathy" className="medicine-tab">
+          <h3>Homeopathy</h3>
+          <img src={homeoImg} alt="Homeopathy" />
+        </Link>
+
+
+        <Link to="/allopathy" className="medicine-tab">
+          <h3>Allopathy</h3>
+          <img src={allopathyImg} alt="Allopathy" />
+        </Link>
 
           {/* FACTS + CAMPS */}
           <div className="middle-section">
