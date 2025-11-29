@@ -1,3 +1,6 @@
 TechNomads
 .vscode/
 data-sets/
+*.db
+*.png
+*.jpg
