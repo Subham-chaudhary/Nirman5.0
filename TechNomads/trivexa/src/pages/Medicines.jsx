@@ -1,23 +1,24 @@
-import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { data, useLocation, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/useCart";
 
-/* =================== MEDICINE VARIATIONS DATA =================== */
+async function searchfetch(query) {
+  try {
+    const response = await fetch(
+      `https://n92pbj45-5000.inc1.devtunnels.ms/api/search?q=${query}`
+    );
 
-const MEDICINE_VARIATIONS = [
-  { strength: '650mg Tablet (Strip of 10)', form: 'Tablet', priceOffset: 15, tag: 'High Strength', img: 'https://via.placeholder.com/250x180/90ee90/000000?text=Tablet+Strip' },
-  { strength: '500mg Tablet (Strip of 15)', form: 'Tablet', priceOffset: 5, tag: 'Standard Dose', img: 'https://via.placeholder.com/250x180/b0e0e6/000000?text=Pill+Pack' },
-  { strength: '250mg Suspension (100ml)', form: 'Syrup', priceOffset: 30, tag: 'Child/Liquid', img: 'https://via.placeholder.com/250x180/add8e6/000000?text=Syrup+Bottle' },
-  { strength: '100mg Capsule (Box of 30)', form: 'Capsule', priceOffset: 25, tag: 'Extended Release', img: 'https://via.placeholder.com/250x180/ffb6c1/000000?text=Capsule+Box' },
-  { strength: '500mg Tablet (Generic Brand)', form: 'Tablet', priceOffset: -5, tag: 'Best Value', img: 'https://via.placeholder.com/250x180/f08080/000000?text=Generic+Pills' },
-  { strength: '200mg Injection (Single Vial)', form: 'Injection', priceOffset: 50, tag: 'Clinic Use', img: 'https://via.placeholder.com/250x180/d3d3d3/000000?text=Injection+Vial' },
-  { strength: '5% Topical Gel (50g Tube)', form: 'Gel', priceOffset: 40, tag: 'Topical Use', img: 'https://via.placeholder.com/250x180/ffffe0/000000?text=Gel+Tube' },
-  { strength: '150mg Effervescent Tablet', form: 'Effervescent', priceOffset: 20, tag: 'Quick Absorb', img: 'https://via.placeholder.com/250x180/afeeee/000000?text=Effervescent' },
-];
+    if (!response.ok) throw new Error("API Failed");
+
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error("API ERROR:", err);
+    return null;
+  }
+}
 
 const generateMockVariations = (medicineName) => {
-  const basePrice = Math.floor(Math.random() * 50) + 120; 
-
   return MEDICINE_VARIATIONS.map((variation, i) => {
     const finalPrice = basePrice + variation.priceOffset;
 
@@ -34,101 +35,103 @@ const generateMockVariations = (medicineName) => {
 };
 
 /* =================== MAIN MEDICINE COMPONENT =================== */
-
 const Medicine = () => {
   const location = useLocation();
   const { addToCart } = useCart();
+  const [searchParams] = useSearchParams();
+  const searchText = searchParams.get("q") || "Zerodol";
 
-  const initialSearchTerm = location.state?.searchTerm || "Zerodol";
-  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [searchTerm, setSearchTerm] = useState(searchText);
+  const [currentResults, setCurrentResults] = useState([]);
 
-  const [currentResults, setCurrentResults] = useState(() => {
-    if (location.state?.results && location.state.results.length > 0) {
-      return location.state.results;
-    }
-    return generateMockVariations(initialSearchTerm);
-  });
+  /* =================== LOAD DATA =================== */
+  useEffect(() => {
+    loadData(searchText);
+  }, [searchText]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const term = searchTerm.trim();
+  const loadData = async (term) => {
+    const apiData = await searchfetch(term);
 
-    if (term !== "") {
-      setCurrentResults(generateMockVariations(term));
+    if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+      console.log(apiData)
+      const normalized = apiData.map((item, i) => ({
+        id: item.id || i + 1,
+        name: item.med_name || `${term}`,
+        price: item.final_price
+ || 150,
+        form: item.drug_variant
+ || "Tablet",
+        tag: item.drug_manufacturer
+,
+        imageUrl:
+           "https://placehold.co/600x400?text=Trivexa",
+           gotToUrl: item.med_url,
+      }));
+
+      setCurrentResults(normalized);
     } else {
-      setCurrentResults([]);
+      setCurrentResults(generateMockVariations(term));
     }
+  };
+
+  /* =================== SEARCH =================== */
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
+
+    loadData(searchTerm);
   };
 
   return (
     <div style={{ padding: "24px 64px" }}>
-      <h2 style={{ color: "#2c3e50" }}>Product Variations</h2>
+      <h2>Product Variations</h2>
 
-      {/* ✅ SEARCH BAR */}
-      <div style={{ padding: "20px 0 40px 0", borderBottom: "1px solid #eee" }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", maxWidth: "600px" }}>
-          <div style={searchBarStyle}>
-            <input
-              type="text"
-              placeholder="Search for a base medicine name (e.g., Paracetamol)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={inputStyle}
-            />
-            <button type="submit" style={buttonStyle}>
-              Search
-            </button>
-          </div>
-        </form>
-      </div>
+      <form onSubmit={handleSearch} style={{ maxWidth: 600 }}>
+        <div style={searchBarStyle}>
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search medicine..."
+            style={inputStyle}
+          />
+          <button style={buttonStyle} onClick={() => window.location.href = "/medicine?q="+searchTerm} >Search</button>
+        </div>
+      </form>
 
-      {currentResults.length > 0 && (
-        <>
-          <h3 style={{ marginBottom: "25px" }}>
-            Available Variations for{" "}
-            <span style={{ fontWeight: "bold", color: "#10967a" }}>
-              {searchTerm}
-            </span>
-          </h3>
-
-          <div style={resultsGridStyle}>
-            {currentResults.map((item, i) => (
-              <div key={i} style={{ ...cardStyle, padding: "0" }}>
-                
-                <div style={imageCardStyle(item.imageUrl)}>
-                  <div style={tagStyle}>{item.tag}</div>
-                </div>
-
-                <div style={textBlockStyle}>
-                  <h4>{item.name}</h4>
-                  <p>Form: {item.form}</p>
-                  <p style={{ fontWeight: "800", fontSize: "1.5em", color: "#e74c3c" }}>
-                    ₹{item.price}
-                  </p>
-
-                  <button
-                    onClick={() =>
-                      addToCart({
-                        id: item.id,
-                        name: item.name,
-                        price: item.price,
-                      })
-                    }
-                    style={addButton}
-                  >
-                    Add to Cart
-                  </button>
-                </div>
+      {currentResults.length > 0 ? (
+        <div style={resultsGridStyle}>
+          {currentResults.map((item) => (
+            <div key={item.id} style={cardStyle}>
+              <div style={imageCardStyle(item.imageUrl)}>
+                <div style={tagStyle}>{item.tag}</div>
               </div>
-            ))}
-          </div>
-        </>
-      )}
 
-      {currentResults.length === 0 && (
-        <p style={{ marginTop: "30px", color: "#888" }}>
-          No variations found for "{searchTerm}"
-        </p>
+              <div style={textBlockStyle} onClick={() => window.location.href = item.gotToUrl} >
+                <h4>{item.name}</h4>
+                <p>Form: {item.form}</p>
+                <p style={{ fontWeight: "bold", color: "red" }}>
+                  {item.price}
+                </p>
+
+                <button
+                  style={addButton}
+                  onClick={() =>
+                    addToCart({
+                      id: item.id,
+                      name: item.name,
+                      price: item.price,
+                    })
+                  }
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p>We are Fetching the results. Please hold on.</p>
       )}
     </div>
   );
@@ -138,69 +141,61 @@ export default Medicine;
 
 /* =================== STYLES =================== */
 
-const imageCardStyle = (imageUrl) => ({
-  height: "180px",
-  backgroundColor: "#f8f8f8",
-  borderRadius: "16px 16px 0 0",
-  backgroundImage: `url(${imageUrl})`,
+const imageCardStyle = (url) => ({
+  height: 180,
+  backgroundImage: `url(${url})`,
   backgroundSize: "contain",
-  backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
-  position: "relative",
+  backgroundPosition: "center",
 });
-
-const textBlockStyle = { padding: "10px", textAlign: "center" };
-
-const searchBarStyle = {
-  display: "flex",
-  width: "100%",
-  border: "2px solid #3498db",
-  borderRadius: "8px",
-  overflow: "hidden",
-};
-
-const inputStyle = { flexGrow: 1, padding: "12px 15px", border: "none" };
-
-const buttonStyle = {
-  backgroundColor: "#3498db",
-  color: "white",
-  border: "none",
-  padding: "12px 25px",
-  fontWeight: "bold",
-};
 
 const resultsGridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(4, 1fr)",
-  gap: "25px",
+  gap: 25,
+  marginTop: 30,
 };
 
 const cardStyle = {
+  borderRadius: 12,
   background: "#fff",
-  borderRadius: "16px",
-  boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
   overflow: "hidden",
-  borderTop: "5px solid #10967a",
 };
+
+const textBlockStyle = { padding: 12, textAlign: "center" };
 
 const tagStyle = {
   position: "absolute",
-  top: "10px",
-  right: "10px",
-  backgroundColor: "#f39c12",
-  color: "white",
+  top: 10,
+  right: 10,
+  background: "orange",
+  color: "#fff",
   padding: "4px 10px",
-  borderRadius: "8px",
-  fontSize: "0.75em",
+};
+
+const searchBarStyle = {
+  display: "flex",
+  border: "2px solid #3498db",
+  borderRadius: 6,
+  overflow: "hidden",
+};
+
+const inputStyle = { flex: 1, padding: 10, border: "none" };
+
+const buttonStyle = {
+  background: "#3498db",
+  color: "#fff",
+  border: "none",
+  padding: "10px 20px",
 };
 
 const addButton = {
-  backgroundColor: "#10967a",
-  color: "white",
+  background: "#10967a",
+  color: "#fff",
   border: "none",
-  padding: "10px 20px",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: "700",
+  padding: 10,
   width: "100%",
+  borderRadius: 6,
+  cursor: "pointer",
 };

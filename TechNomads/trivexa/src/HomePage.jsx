@@ -1,17 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { useNavigate } from "react-router-dom";
-import "./App.css";
 
-const mockMedicines = [
-  "Paracetamol",
-  "Crocin",
-  "Azithromycin",
-  "Vitamin C",
-  "Dolo 650",
-  "Cetirizine",
-  "Amoxicillin"
-];
+
 
 const HomePage = () => {
   const heroRef = useRef(null);
@@ -49,15 +40,8 @@ const HomePage = () => {
   /* 🔍 SEARCH LOGIC */
   const handleSearch = () => {
     if (!searchText.trim()) return;
-
-    const results = mockMedicines.filter((item) =>
-      item.toLowerCase().includes(searchText.toLowerCase())
-    );
-
-    setSearchResults(results);
-
     // Navigate to medicine page after search
-    navigate("/medicine", { state: { results } });
+    navigate("/medicine?q="+searchText, { });
   };
 
   /* 📄 PRESCRIPTION UPLOAD LOGIC */
